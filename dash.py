@@ -40,8 +40,6 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
     cols = input_cols.copy()
     cols = ['Id', *cols, 'SalePrice']
 
-    print("Cols: ", cols)
-
     # Split the data into training/testing sets
     train, test = train_test_split(
         train_data_lol[cols], test_size=0.2,
@@ -74,8 +72,15 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
         mean = numeric_df[col].mean()
         numeric_df[col].fillna(value=mean, inplace=True)
 
+    numeric_df.drop(columns=['Id'], inplace=True)
+    sale_price = numeric_df.pop('SalePrice')
+    numeric_df['SalePrice'] = sale_price
+
     "Numeric DF"
     numeric_df = numeric_df.copy(deep=True)
+
+    "Columns"
+    numeric_df.columns
     # numeric_df
     ## END ACTUAL MODEL
 
@@ -86,24 +91,48 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
     return reg, train, test
 
 
-if 'attribs' not in st.session_state:
+if 'attribs' not in st.session_state or \
+        st.session_state.attribs is None or \
+        len(st.session_state.attribs) == 0:
+    st.warning("No attributes selected. Using default.")
     st.session_state.attribs = ['LotArea']
 
 st.title("House Price Predictor")
 
-model, train, test = make_dummy_model(st.session_state.attribs)
+model, train, test = None, None, None
+
+with st.spinner("Loading model..."):
+    model, train, test = make_dummy_model(st.session_state.attribs)
+
+st.success("Model loaded.")
+
+
+def predict_with_model(model: LinearRegression) -> float:
+    predict_vals = []
+    session_attribs = st.session_state
+    for attrib in st.session_state.attribs:
+        if ALL_ATTRIBS[attrib]['_type'] == 'numeric':
+            predict_vals.append(session_attribs[f"data--attrib-{attrib}"])
+        elif ALL_ATTRIBS[attrib]['_type'] == 'select':
+            # Re-one hot encode all the options
+            for k, v in ALL_ATTRIBS[attrib]['options'].items():
+                if session_attribs[f"data--attrib-{attrib}"] == k:
+                    predict_vals.append(1)
+                else:
+                    predict_vals.append(0)
+        else:
+            raise Exception("Unknown type")
+
+    return model.predict([predict_vals])[0][0]
+
 
 # rmse = mean_squared_error(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']), squared=False)
 # f"RMSE: {format_number(rmse)}"
 
 # predictTab, viewTab = st.tabs(['View Listings', 'Predict Your Own'])
 
-# viewTab.dataframe(model.coef_)
 
-
-# st.write("The model is", model)
-
-all_attribs = {
+ALL_ATTRIBS = {
     'MSSubClass': {"_type": 'numeric', 'description': 'Identifies the type of dwelling involved in the sale.',
                    "step": 1},
     'MSZoning': {"_type": 'select', "options": {
@@ -117,7 +146,7 @@ all_attribs = {
         'RM': 'Residential Medium Density'
     }},
     'LotFrontage': {"_type": 'numeric', "description": "Linear feet of street connected to property", "step": 1},
-    'LotArea': {"_type": 'numeric', "description": "Lot size in square feet", "step": 1},
+    'LotArea': {"_type": 'numeric', "description": "Lot size in square feet", "step": 100},
     'Street': {"_type": 'select', "description": "Type of road access to property",
                "options": {
                    'Grvl': 'Gravel',
@@ -566,28 +595,20 @@ all_attribs = {
 # st.session_state.attribs = []
 
 def on_multiselect_change():
-    print("Changed!")
-    print(st.session_state.attribs)
+    if st.session_state.attribs is None or len(st.session_state) == 0:
+        st.session_state.attribs = ['LotArea']
 
 
-st.multiselect("Select attributes", all_attribs.keys(), on_change=on_multiselect_change, key="attribs")
+st.multiselect("Select attributes", ALL_ATTRIBS.keys(), on_change=on_multiselect_change, key="attribs")
 
 "Modify House Values"
 for attrib in st.session_state.attribs:
     attrib_session_key = f"data--attrib-{attrib}"
-    if all_attribs[attrib]["_type"] == 'numeric':
-        st.number_input(attrib, key=attrib_session_key, step=1)
-    elif all_attribs[attrib]["_type"] == 'select':
-        st.selectbox(attrib, key=f"data--attrib-{attrib}", options=all_attribs[attrib]["options"],
-                     format_func=lambda x: all_attribs[attrib]["options"][x])
-
-"Predicted Price"
-input = np.array([st.session_state[f"data--attrib-{attrib}"] for attrib in st.session_state.attribs])
-input.reshape(-1, 1)
-# input
-# predicted_price = model.predict([input])
-# readable_price = millify(predicted_price[0][0])
-# f"${readable_price}"
+    if ALL_ATTRIBS[attrib]["_type"] == 'numeric':
+        st.number_input(attrib, key=attrib_session_key, step=ALL_ATTRIBS[attrib]["step"])
+    elif ALL_ATTRIBS[attrib]["_type"] == 'select':
+        st.selectbox(attrib, key=f"data--attrib-{attrib}", options=ALL_ATTRIBS[attrib]["options"],
+                     format_func=lambda x: ALL_ATTRIBS[attrib]["options"][x])  # Format it with human-readable values
 
 
 """
@@ -598,5 +619,15 @@ input.reshape(-1, 1)
 "Session State"
 st.session_state
 
-"Allowed Attributes:"
-all_attribs
+# "Allowed Attributes:"
+# ALL_ATTRIBS
+
+
+"Predicted Price"
+# input = np.array([st.session_state[f"data--attrib-{attrib}"] for attrib in st.session_state.attribs])
+# input.reshape(-1, 1)
+# input
+predicted_price = predict_with_model(model)
+# readable_price = "{0:.3g}".format(predicted_price)
+f"${(round(predicted_price) // 1000 * 1000):,d}"
+
