@@ -3,6 +3,13 @@ This repository holds our linear regression ML model python program as well as t
 
 
 ## Streamlit
-1. Make dummy model `python .\make_dummy_model.py`
-2. 
+First, enter into venv and install requirements.txt. Then:
 
+1. Make dummy model 
+    ```shell
+    python .\make_dummy_model.py`
+   ```
+2. Run Streamlit 
+   ```shell
+    streamlit run dash.py`
+    ```
