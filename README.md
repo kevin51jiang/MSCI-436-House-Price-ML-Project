@@ -7,9 +7,10 @@ First, enter into venv and install requirements.txt. Then:
 
 1. Make dummy model 
     ```shell
-    python .\make_dummy_model.py`
+    python .\make_dummy_model.py
    ```
+   
 2. Run Streamlit 
    ```shell
-    streamlit run dash.py`
+    streamlit run dash.py
     ```
