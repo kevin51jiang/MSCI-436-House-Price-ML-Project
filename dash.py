@@ -80,7 +80,8 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
     numeric_df = numeric_df.copy(deep=True)
 
     "Columns"
-    numeric_df.columns
+    colnames = list(numeric_df.columns)
+    colnames
     # numeric_df
     ## END ACTUAL MODEL
 
@@ -123,6 +124,9 @@ def predict_with_model(model: LinearRegression) -> float:
         else:
             raise Exception("Unknown type")
 
+    # "Predict Vals"
+    # predict_vals
+
     return model.predict([predict_vals])[0][0]
 
 
@@ -136,15 +140,23 @@ ALL_ATTRIBS = {
     'MSSubClass': {"_type": 'numeric', 'description': 'Identifies the type of dwelling involved in the sale.',
                    "step": 1},
     'MSZoning': {"_type": 'select', "options": {
-        'A': 'Agriculture',
-        'C': 'Commercial',
+        'C (all)': 'Commercial (all)',
         'FV': 'Floating Village Residential',
-        'I': 'Industrial',
         'RH': 'Residential High Density',
         'RL': 'Residential Low Density',
-        'RP': 'Residential Low Density Park',
         'RM': 'Residential Medium Density'
     }},
+    'OverallQual': {"_type": 'numeric',
+                    "description": "Rates the overall material and finish of the house. 10 is best.", 'step': 1},
+    'OverallCond': {"_type": 'numeric', "description": "Rates the overall condition of the house. 10 is best.",
+                    'step': 1},
+    'YearBuilt': {"_type": 'numeric', "description": "Original construction date", 'step': 1},
+    'YearRemodAdd': {"_type": 'numeric',
+                     "description": "Remodel date (same as construction date if no remodeling or additions)",
+                     'step': 1},
+    'MasVnrArea': {"_type": 'numeric', "description": "Masonry veneer area in square feet", 'step': 1},
+    'BsmtFinSF1': {"_type": 'numeric', "description": "Type 1 finished square feet", 'step': 1},
+    'BsmtFinSF2': {"_type": 'numeric', "description": "Type 2 finished square feet", 'step': 1},
     'LotFrontage': {"_type": 'numeric', "description": "Linear feet of street connected to property", "step": 1},
     'LotArea': {"_type": 'numeric', "description": "Lot size in square feet", "step": 100},
     'Street': {"_type": 'select', "description": "Type of road access to property",
@@ -155,8 +167,7 @@ ALL_ATTRIBS = {
     'Alley': {"_type": 'select', "description": "Type of alley access to property",
               "options": {
                   'Grvl': 'Gravel',
-                  'Pave': 'Paved',
-                  'NA': 'No alley access'
+                  'Pave': 'Paved'
               }},
     'LotShape': {"_type": 'select', "description": "General shape of property",
                  "options": {
@@ -175,9 +186,7 @@ ALL_ATTRIBS = {
     'Utilities': {"_type": 'select', "description": "Type of utilities available",
                   "options": {
                       'AllPub': 'All public Utilities (E,G,W,& S)',
-                      'NoSewr': 'Electricity, Gas, and Water (Septic Tank)',
                       'NoSeWa': 'Electricity and Gas Only',
-                      'ELO': 'Electricity only'
                   }},
     'LotConfig': {"_type": 'select', "description": "Lot configuration",
                   "options": {
@@ -242,7 +251,6 @@ ALL_ATTRIBS = {
                        'RRAn': 'Adjacent to North-South Railroad',
                        'PosN': 'Near positive off-site feature--park, greenbelt, etc.',
                        'PosA': 'Adjacent to postive off-site feature',
-                       'RRNe': 'Within 200 of East-West Railroad',
                        'RRAe': 'Adjacent to East-West Railroad'
                    }},
     'BldgType': {"_type": 'select', "description": "Type of dwelling",
@@ -264,14 +272,7 @@ ALL_ATTRIBS = {
                        'SFoyer': 'Split Foyer',
                        'SLvl': 'Split Level'
                    }},
-    'OverallQual': {"_type": 'numeric',
-                    "description": "Rates the overall material and finish of the house. 10 is best.", 'step': 1},
-    'OverallCond': {"_type": 'numeric', "description": "Rates the overall condition of the house. 10 is best.",
-                    'step': 1},
-    'YearBuilt': {"_type": 'numeric', "description": "Original construction date", 'step': 1},
-    'YearRemodAdd': {"_type": 'numeric',
-                     "description": "Remodel date (same as construction date if no remodeling or additions)",
-                     'step': 1},
+
     'RoofStyle': {"_type": 'select', "description": "Type of roof",
                   "options": {
                       'Flat': 'Flat',
@@ -301,11 +302,8 @@ ALL_ATTRIBS = {
                         'CBlock': 'Cinder Block',
                         'CemntBd': 'Cement Board',
                         'HdBoard': 'Hard Board',
-                        'ImStucc': 'Imitation Stucco',
                         'MetalSd': 'Metal Siding',
-                        'Other': 'Other',
                         'Plywood': 'Plywood',
-                        'PreCast': 'PreCast',
                         'Stone': 'Stone',
                         'Stucco': 'Stucco',
                         'VinylSd': 'Vinyl Siding',
@@ -316,38 +314,34 @@ ALL_ATTRIBS = {
                     "options": {
                         'AsbShng': 'Asbestos Shingles',
                         'AsphShn': 'Asphalt Shingles',
-                        'BrkComm': 'Brick Common',
+                        'Brk Cmn': 'Brick Common',
                         'BrkFace': 'Brick Face',
                         'CBlock': 'Cinder Block',
-                        'CemntBd': 'Cement Board',
+                        'CmentBd': 'Cement Board',
                         'HdBoard': 'Hard Board',
                         'ImStucc': 'Imitation Stucco',
                         'MetalSd': 'Metal Siding',
                         'Other': 'Other',
                         'Plywood': 'Plywood',
-                        'PreCast': 'PreCast',
                         'Stone': 'Stone',
                         'Stucco': 'Stucco',
                         'VinylSd': 'Vinyl Siding',
                         'Wd Sdng': 'Wood Siding',
-                        'WdShing': 'Wood Shingles'
+                        'Wd Shng': 'Wood Shingles'
                     }},
     'MasVnrType': {"_type": 'select', "description": "Masonry veneer type",
                    "options": {
                        'BrkCmn': 'Brick Common',
                        'BrkFace': 'Brick Face',
-                       'CBlock': 'Cinder Block',
-                       'None': 'None',
                        'Stone': 'Stone'
                    }},
-    'MasVnrArea': {"_type": 'numeric', "description": "Masonry veneer area in square feet", 'step': 1},
+
     'ExterQual': {"_type": 'select', "description": "Evaluates the quality of the material on the exterior",
                   "options": {
                       'Ex': 'Excellent',
                       'Gd': 'Good',
                       'TA': 'Average/Typical',
                       'Fa': 'Fair',
-                      'Po': 'Poor'
                   }},
     'ExterCond': {"_type": 'select', "description": "Evaluates the present condition of the material on the exterior",
                   "options": {
@@ -372,25 +366,20 @@ ALL_ATTRIBS = {
                      'Gd': 'Good (90-99 inches)',
                      'TA': 'Typical (80-89 inches)',
                      'Fa': 'Fair (70-79 inches)',
-                     'Po': 'Poor (<70 inches)',
-                     'NA': 'No Basement'
                  }},
     'BsmtCond': {"_type": 'select', "description": "Evaluates the general condition of the basement",
                  "options": {
                      'Ex': 'Excellent',
                      'Gd': 'Good',
                      'TA': 'Typical - slight dampness allowed',
-                     'Fa': 'Fair - dampness or some cracking or settling',
-                     'Po': 'Poor - Severe cracking, settling, or wetness',
-                     'NA': 'No Basement'
+                     'Fa': 'Fair - dampness or some cracking or settling'
                  }},
     'BsmtExposure': {"_type": 'select', "description": "Refers to walkout or garden level walls",
                      "options": {
                          'Gd': 'Good Exposure',
                          'Av': 'Average Exposure (split levels or foyers typically score average or above)',
                          'Mn': 'Mimimum Exposure',
-                         'No': 'No Exposure',
-                         'NA': 'No Basement'
+                         'No': 'No Exposure'
                      }},
     'BsmtFinType1': {"_type": 'select', "description": "Rating of basement finished area",
                      "options": {
@@ -399,10 +388,8 @@ ALL_ATTRIBS = {
                          'BLQ': 'Below Average Living Quarters',
                          'Rec': 'Average Rec Room',
                          'LwQ': 'Low Quality',
-                         'Unf': 'Unfinshed',
-                         'NA': 'No Basement'
+                         'Unf': 'Unfinished'
                      }},
-    'BsmtFinSF1': {"_type": 'numeric', "description": "Type 1 finished square feet", 'step': 1},
     'BsmtFinType2': {"_type": 'select', "description": "Rating of basement finished area (if multiple types)",
                      "options": {
                          'GLQ': 'Good Living Quarters',
@@ -410,10 +397,8 @@ ALL_ATTRIBS = {
                          'BLQ': 'Below Average Living Quarters',
                          'Rec': 'Average Rec Room',
                          'LwQ': 'Low Quality',
-                         'Unf': 'Unfinshed',
-                         'NA': 'No Basement'
+                         'Unf': 'Unfinished'
                      }},
-    'BsmtFinSF2': {"_type": 'numeric', "description": "Type 2 finished square feet", 'step': 1},
     'BsmtUnfSF': {"_type": 'numeric', "description": "Unfinished square feet of basement area", 'step': 1},
     'TotalBsmtSF': {"_type": 'numeric', "description": "Total square feet of basement area", 'step': 1},
     'Heating': {"_type": 'select', "description": "Type of heating",
@@ -422,7 +407,6 @@ ALL_ATTRIBS = {
                     'GasA': 'Gas forced warm air furnace',
                     'GasW': 'Gas hot water or steam heat',
                     'Grav': 'Gravity furnace',
-                    'OthW': 'Hot water or steam heat other than gas',
                     'Wall': 'Wall furnace'
                 }},
     'HeatingQC': {"_type": 'select', "description": "Heating quality and condition",
@@ -462,8 +446,7 @@ ALL_ATTRIBS = {
                         'Ex': 'Excellent',
                         'Gd': 'Good',
                         'TA': 'Typical/Average',
-                        'Fa': 'Fair',
-                        'Po': 'Poor'
+                        'Fa': 'Fair'
                     }},
     'TotRmsAbvGrd': {"_type": 'numeric', "description": "Total rooms above grade (does not include bathrooms)",
                      'step': 1},
@@ -475,9 +458,7 @@ ALL_ATTRIBS = {
                        'Min2': 'Minor Deductions 2',
                        'Mod': 'Moderate Deductions',
                        'Maj1': 'Major Deductions 1',
-                       'Maj2': 'Major Deductions 2',
-                       'Sev': 'Severely Damaged',
-                       'Sal': 'Salvage only'
+                       'Maj2': 'Major Deductions 2'
                    }},
     'Fireplaces': {"_type": 'numeric', "description": "Number of fireplaces", 'step': 1},
     'FireplaceQu': {"_type": 'select', "description": "Fireplace quality",
@@ -486,8 +467,7 @@ ALL_ATTRIBS = {
                         'Gd': 'Good - Masonry Fireplace in main level',
                         'TA': 'Average - Prefabricated Fireplace in main living area or Masonry Fireplace in basement',
                         'Fa': 'Fair - Prefabricated Fireplace in basement',
-                        'Po': 'Poor - Ben Franklin Stove',
-                        'NA': 'No Fireplace'
+                        'Po': 'Poor - Ben Franklin Stove'
                     }},
     'GarageType': {"_type": 'select', "description": "Garage location",
                    "options": {
@@ -496,16 +476,14 @@ ALL_ATTRIBS = {
                        'Basment': 'Basement Garage',
                        'BuiltIn': 'Built-In (Garage part of house - typically has room above garage)',
                        'CarPort': 'Car Port',
-                       'Detchd': 'Detached from home',
-                       'NA': 'No Garage'
+                       'Detchd': 'Detached from home'
                    }},
     'GarageYrBlt': {"_type": 'numeric', "description": "Year garage was built", 'step': 1},
     'GarageFinish': {"_type": 'select', "description": "Interior finish of the garage",
                      "options": {
                          'Fin': 'Finished',
                          'RFn': 'Rough Finished',
-                         'Unf': 'Unfinished',
-                         'NA': 'No Garage'
+                         'Unf': 'Unfinished'
                      }},
     'GarageCars': {"_type": 'numeric', "description": "Size of garage in car capacity", 'step': 1},
     'GarageArea': {"_type": 'numeric', "description": "Size of garage in square feet", 'step': 1},
@@ -515,8 +493,7 @@ ALL_ATTRIBS = {
                        'Gd': 'Good',
                        'TA': 'Typical/Average',
                        'Fa': 'Fair',
-                       'Po': 'Poor',
-                       'NA': 'No Garage'
+                       'Po': 'Poor'
                    }},
     'GarageCond': {"_type": 'select', "description": "Garage condition",
                    "options": {
@@ -524,8 +501,7 @@ ALL_ATTRIBS = {
                        'Gd': 'Good',
                        'TA': 'Typical/Average',
                        'Fa': 'Fair',
-                       'Po': 'Poor',
-                       'NA': 'No Garage'
+                       'Po': 'Poor'
                    }},
     'PavedDrive': {"_type": 'select', "description": "Paved driveway",
                    "options": {
@@ -543,26 +519,21 @@ ALL_ATTRIBS = {
                "options": {
                    'Ex': 'Excellent',
                    'Gd': 'Good',
-                   'TA': 'Average/Typical',
-                   'Fa': 'Fair',
-                   'NA': 'No Pool'
+                   'Fa': 'Fair'
                }},
     'Fence': {"_type": 'select', "description": "Fence quality",
               "options": {
                   'GdPrv': 'Good Privacy',
                   'MnPrv': 'Minimum Privacy',
                   'GdWo': 'Good Wood',
-                  'MnWw': 'Minimum Wood/Wire',
-                  'NA': 'No Fence'
+                  'MnWw': 'Minimum Wood/Wire'
               }},
     'MiscFeature': {"_type": 'select', "description": "Miscellaneous feature not covered in other categories",
                     "options": {
-                        'Elev': 'Elevator',
                         'Gar2': '2nd Garage (if not described in garage section)',
                         'Othr': 'Other',
                         'Shed': 'Shed (over 100 SF)',
-                        'TenC': 'Tennis Court',
-                        'NA': 'None'
+                        'TenC': 'Tennis Court'
                     }},
     'MiscVal': {"_type": 'numeric', "description": "$Value of miscellaneous feature", 'step': 1},
     'MoSold': {"_type": 'numeric', "description": "Month Sold (MM)", 'step': 1},
@@ -571,7 +542,6 @@ ALL_ATTRIBS = {
                  "options": {
                      'WD': 'Warranty Deed - Conventional',
                      'CWD': 'Warranty Deed - Cash',
-                     'VWD': 'Warranty Deed - VA Loan',
                      'New': 'Home just constructed and sold',
                      'COD': 'Court Officer Deed/Estate',
                      'Con': 'Contract 15% Down payment regular terms',
@@ -610,15 +580,6 @@ for attrib in st.session_state.attribs:
         st.selectbox(attrib, key=f"data--attrib-{attrib}", options=ALL_ATTRIBS[attrib]["options"],
                      format_func=lambda x: ALL_ATTRIBS[attrib]["options"][x])  # Format it with human-readable values
 
-
-"""
----
-## Debugging
-"""
-
-"Session State"
-st.session_state
-
 # "Allowed Attributes:"
 # ALL_ATTRIBS
 
@@ -631,3 +592,10 @@ predicted_price = predict_with_model(model)
 # readable_price = "{0:.3g}".format(predicted_price)
 f"${(round(predicted_price) // 1000 * 1000):,d}"
 
+"""
+---
+## Debugging
+"""
+
+"Session State"
+st.session_state
