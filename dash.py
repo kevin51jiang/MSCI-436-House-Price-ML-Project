@@ -12,10 +12,6 @@ import math
 predicted_price = None
 
 
-# with open('bad_model.pkl', 'rb') as f:
-# model = joblib.load('bad_model.pkl')
-
-
 def format_number(x):
     return '{:.2e}'.format(x)
 
@@ -33,24 +29,18 @@ def millify(n):
 
 @st.cache_resource
 def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.DataFrame, pd.DataFrame):
-    train_data_lol = pd.read_csv("data/train.csv")
+    data = pd.read_csv("data/train.csv")
 
     print("Input cols: ", input_cols)
     # Always need to compare it against the SalePrice to train
     cols = input_cols.copy()
     cols = ['Id', *cols, 'SalePrice']
 
-    # Split the data into training/testing sets
-    train, test = train_test_split(
-        train_data_lol[cols], test_size=0.2,
-        random_state=12123213)
-    # train, test = train_test_split(
-    #     train_data_lol, test_size=0.2,
-    #     random_state=12123213)
+    data = data[cols]
 
     ## START ACTUAL MODEL
-    numeric_df = train.select_dtypes(include=['int64', 'float64'])
-    non_numeric_columns = train.columns[(train.dtypes != 'int64') & (train.dtypes != 'float64')].tolist()
+    numeric_df = data.select_dtypes(include=['int64', 'float64'])
+    non_numeric_columns = data.columns[(data.dtypes != 'int64') & (data.dtypes != 'float64')].tolist()
 
     # ONE-HOT ENCODE
     # https://stackabuse.com/one-hot-encoding-in-python-with-pandas-and-scikit-learn/
@@ -62,7 +52,7 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
         return o_encoded
 
     for col in non_numeric_columns:
-        encoded = one_hot(train, col, 'is')
+        encoded = one_hot(data, col, 'is')
         numeric_df = pd.merge(numeric_df, encoded, on='Id', how='left')
 
     null_cols = numeric_df.columns[numeric_df.isna().any()].tolist()
@@ -76,20 +66,22 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
     sale_price = numeric_df.pop('SalePrice')
     numeric_df['SalePrice'] = sale_price
 
-    "Numeric DF"
-    numeric_df = numeric_df.copy(deep=True)
-
     "Columns"
-    colnames = list(numeric_df.columns)
-    colnames
-    # numeric_df
+    st.write(list(numeric_df.columns))
+    data_cols = list(numeric_df.columns)
+
     ## END ACTUAL MODEL
 
-    reg = LinearRegression().fit(numeric_df.loc[:, numeric_df.columns != 'SalePrice'], numeric_df[['SalePrice']])
+    # Split the data into training/testing sets
+    train, test = train_test_split(
+        numeric_df, test_size=0.2,
+        random_state=12123213)
+
+    reg = LinearRegression().fit(train.loc[:, train.columns != 'SalePrice'], train[['SalePrice']])
     # reg = LinearRegression().fit(train.loc[:, train.columns != 'SalePrice'], train[['SalePrice']])
     # reg.coef_
 
-    return reg, train, test
+    return reg, train, test, data_cols
 
 
 if 'attribs' not in st.session_state or \
@@ -100,12 +92,9 @@ if 'attribs' not in st.session_state or \
 
 st.title("House Price Predictor")
 
-model, train, test = None, None, None
+# model, train, test = None, None, None
 
-with st.spinner("Loading model..."):
-    model, train, test = make_dummy_model(st.session_state.attribs)
-
-st.success("Model loaded.")
+model, train, test, data_cols = make_dummy_model(st.session_state.attribs)
 
 
 def predict_with_model(model: LinearRegression) -> float:
@@ -124,28 +113,22 @@ def predict_with_model(model: LinearRegression) -> float:
         else:
             raise Exception("Unknown type")
 
-    # "Predict Vals"
-    # predict_vals
-
     return model.predict([predict_vals])[0][0]
 
 
-# rmse = mean_squared_error(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']), squared=False)
-# f"RMSE: {format_number(rmse)}"
-
-# predictTab, viewTab = st.tabs(['View Listings', 'Predict Your Own'])
 
 
 ALL_ATTRIBS = {
     'MSSubClass': {"_type": 'numeric', 'description': 'Identifies the type of dwelling involved in the sale.',
                    "step": 1},
-    'MSZoning': {"_type": 'select', "options": {
-        'C (all)': 'Commercial (all)',
-        'FV': 'Floating Village Residential',
-        'RH': 'Residential High Density',
-        'RL': 'Residential Low Density',
-        'RM': 'Residential Medium Density'
-    }},
+    'MSZoning': {"_type": 'select', 'description': 'Identifies the general zoning classification of the sale.',
+                 "options": {
+                     'C (all)': 'Commercial (all)',
+                     'FV': 'Floating Village Residential',
+                     'RH': 'Residential High Density',
+                     'RL': 'Residential Low Density',
+                     'RM': 'Residential Medium Density'
+                 }},
     'OverallQual': {"_type": 'numeric',
                     "description": "Rates the overall material and finish of the house. 10 is best.", 'step': 1},
     'OverallCond': {"_type": 'numeric', "description": "Rates the overall condition of the house. 10 is best.",
@@ -302,6 +285,7 @@ ALL_ATTRIBS = {
                         'CBlock': 'Cinder Block',
                         'CemntBd': 'Cement Board',
                         'HdBoard': 'Hard Board',
+                        'ImStucc': 'Imitation Stucco',
                         'MetalSd': 'Metal Siding',
                         'Plywood': 'Plywood',
                         'Stone': 'Stone',
@@ -407,7 +391,8 @@ ALL_ATTRIBS = {
                     'GasA': 'Gas forced warm air furnace',
                     'GasW': 'Gas hot water or steam heat',
                     'Grav': 'Gravity furnace',
-                    'Wall': 'Wall furnace'
+                    'Wall': 'Wall furnace',
+                    'OthW': 'Hot water or steam heat other than gas',
                 }},
     'HeatingQC': {"_type": 'select', "description": "Heating quality and condition",
                   "options": {
@@ -458,7 +443,8 @@ ALL_ATTRIBS = {
                        'Min2': 'Minor Deductions 2',
                        'Mod': 'Moderate Deductions',
                        'Maj1': 'Major Deductions 1',
-                       'Maj2': 'Major Deductions 2'
+                       'Maj2': 'Major Deductions 2',
+                       'Sev': 'Severely Damaged',
                    }},
     'Fireplaces': {"_type": 'numeric', "description": "Number of fireplaces", 'step': 1},
     'FireplaceQu': {"_type": 'select', "description": "Fireplace quality",
@@ -561,41 +547,82 @@ ALL_ATTRIBS = {
                       }}
 }
 
-
 # st.session_state.attribs = []
+
+
+with st.container():
+    c1, c2 = st.columns([1, 1])
+    if c1.button("Select recommended attributes"):
+        # TODO: Add recommended attributes
+        st.session_state.attribs = ['LotArea', 'OverallQual', 'OverallCond', 'YearBuilt', 'YearRemodAdd', 'BsmtFinSF1']
+        st.experimental_rerun()
+
+    if c2.button("Select all attributes"):
+        st.session_state.attribs = list(ALL_ATTRIBS.keys())
+        st.experimental_rerun()
+
 
 def on_multiselect_change():
     if st.session_state.attribs is None or len(st.session_state) == 0:
         st.session_state.attribs = ['LotArea']
+        st.experimental_rerun()
 
 
-st.multiselect("Select attributes", ALL_ATTRIBS.keys(), on_change=on_multiselect_change, key="attribs")
+st.multiselect("Select attributes (we recommend 7-9)", ALL_ATTRIBS.keys(), on_change=on_multiselect_change,
+               key="attribs")
 
-"Modify House Values"
+"## Modify house parameters"
 for attrib in st.session_state.attribs:
     attrib_session_key = f"data--attrib-{attrib}"
+    description = f"{attrib} ({ALL_ATTRIBS[attrib]['description']})"
     if ALL_ATTRIBS[attrib]["_type"] == 'numeric':
-        st.number_input(attrib, key=attrib_session_key, step=ALL_ATTRIBS[attrib]["step"])
+        st.number_input(description, key=attrib_session_key, step=ALL_ATTRIBS[attrib]["step"])
     elif ALL_ATTRIBS[attrib]["_type"] == 'select':
-        st.selectbox(attrib, key=f"data--attrib-{attrib}", options=ALL_ATTRIBS[attrib]["options"],
+        st.selectbox(description, key=f"data--attrib-{attrib}", options=ALL_ATTRIBS[attrib]["options"],
                      format_func=lambda x: ALL_ATTRIBS[attrib]["options"][x])  # Format it with human-readable values
 
 # "Allowed Attributes:"
 # ALL_ATTRIBS
 
 
-"Predicted Price"
+"### Predicted Price"
 # input = np.array([st.session_state[f"data--attrib-{attrib}"] for attrib in st.session_state.attribs])
 # input.reshape(-1, 1)
 # input
 predicted_price = predict_with_model(model)
+
+rmse = mean_squared_error(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']), squared=False)
 # readable_price = "{0:.3g}".format(predicted_price)
-f"${(round(predicted_price) // 1000 * 1000):,d}"
+st.write(f"\${(round(predicted_price) // 1000 * 1000):,d} ± {(round(rmse) // 1000 * 1000):,d}") # Round to the nearest thousand, format with commas
+
+# f"RMSE: {format_number(rmse)}"
 
 """
----
 ## Debugging
 """
 
 "Session State"
 st.session_state
+
+# Determine the coefficients for each attribute
+"### model_coef_"
+raw_coef_list = list(model.coef_)[0]
+coeffs_list = []
+prev_pos = 0
+for ind, attrib in enumerate(st.session_state.attribs):
+    if ALL_ATTRIBS[attrib]["_type"] == 'numeric':
+        coeffs_list.append([attrib, raw_coef_list[ind]])
+        prev_pos += 1
+    elif ALL_ATTRIBS[attrib]["_type"] == 'select':
+        selected_state = st.session_state[f"data--attrib-{attrib}"]
+        option_keys = list(ALL_ATTRIBS[attrib]["options"].keys())
+        #  Find the index of the selected option
+        coeffs_list.append([attrib, raw_coef_list[prev_pos + option_keys.index(selected_state)]])
+        prev_pos += len(ALL_ATTRIBS[attrib]["options"])
+
+coeffs = pd.DataFrame(coeffs_list, columns=["Attribute", "Coefficient"])
+coeffs.sort_values(by="Coefficient", ascending=False, inplace=True)
+coeffs.reset_index(drop=True, inplace=True)
+st.dataframe(coeffs)
+
+st.divider()
