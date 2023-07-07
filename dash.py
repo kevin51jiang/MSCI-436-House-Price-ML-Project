@@ -66,8 +66,8 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
     sale_price = numeric_df.pop('SalePrice')
     numeric_df['SalePrice'] = sale_price
 
-    "Columns"
-    st.write(list(numeric_df.columns))
+    # "Columns"
+    # st.write(list(numeric_df.columns))
     data_cols = list(numeric_df.columns)
 
     ## END ACTUAL MODEL
@@ -551,6 +551,7 @@ ALL_ATTRIBS = {
 
 
 with st.container():
+    "### Use a template, or go custom."
     c1, c2 = st.columns([1, 1])
     if c1.button("Select recommended attributes"):
         # TODO: Add recommended attributes
@@ -585,7 +586,7 @@ for attrib in st.session_state.attribs:
 # ALL_ATTRIBS
 
 
-"### Predicted Price"
+"## Predicted Price"
 # input = np.array([st.session_state[f"data--attrib-{attrib}"] for attrib in st.session_state.attribs])
 # input.reshape(-1, 1)
 # input

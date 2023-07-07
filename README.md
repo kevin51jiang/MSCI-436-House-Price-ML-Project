@@ -3,8 +3,14 @@ This repository holds our linear regression ML model python program as well as t
 
 
 ## Streamlit
-First, enter into venv and install requirements.txt. Then:
 
+This was written with Python 3.9-3.11.
+
+If you want, make a venv and enter into it. Then:
+1. Install requirements.txt
+    ```shell
+    pip install -r requirements.txt
+    ```
 1. Make dummy model 
     ```shell
     python .\make_dummy_model.py
