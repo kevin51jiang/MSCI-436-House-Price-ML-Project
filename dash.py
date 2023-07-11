@@ -1,7 +1,10 @@
+import sklearn.metrics
 import streamlit as st
 from st_aggrid import AgGrid
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
@@ -114,8 +117,6 @@ def predict_with_model(model: LinearRegression) -> float:
             raise Exception("Unknown type")
 
     return model.predict([predict_vals])[0][0]
-
-
 
 
 ALL_ATTRIBS = {
@@ -555,7 +556,7 @@ with st.container():
     c1, c2 = st.columns([1, 1])
     if c1.button("Select recommended attributes"):
         # TODO: Add recommended attributes
-        st.session_state.attribs = ['LotArea', 'OverallQual', 'OverallCond', 'YearBuilt', 'YearRemodAdd', 'BsmtFinSF1']
+        st.session_state.attribs = ['BldgType', 'FullBath', 'HalfBath', 'BedroomAbvGr']
         st.experimental_rerun()
 
     if c2.button("Select all attributes"):
@@ -594,9 +595,43 @@ predicted_price = predict_with_model(model)
 
 rmse = mean_squared_error(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']), squared=False)
 # readable_price = "{0:.3g}".format(predicted_price)
-st.write(f"\${(round(predicted_price) // 1000 * 1000):,d} ± {(round(rmse) // 1000 * 1000):,d}") # Round to the nearest thousand, format with commas
+st.write(
+    f"\${(round(predicted_price) // 1000 * 1000):,d} ± {(round(rmse) // 1000 * 1000):,d}")  # Round to the nearest thousand, format with commas
 
-# f"RMSE: {format_number(rmse)}"
+f"RMSE: {format_number(rmse)}"
+# R squared
+"R squared:"
+st.write(sklearn.metrics.r2_score(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice'])))
+
+# Scatter plot of this house vs the training dataset
+
+
+"Influence of each attribute on price"
+st.selectbox("Select an attribute to plot against SalePrice", st.session_state.attribs, key="scatterplot_attrib")
+scatterplot_attrib = st.session_state.scatterplot_attrib
+
+if ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'numeric':
+    st.plotly_chart(px.scatter(test, x=scatterplot_attrib, y='SalePrice', trendline='ols'), use_container_width=True)
+elif ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'select':
+    colnames = [x for x in test.columns if scatterplot_attrib in x]
+    # Plot test with colnames
+    st.plotly_chart(px.box(train, x=colnames, y='SalePrice'), use_container_width=True)
+
+# Plot a histogram of the predicted prices
+"## Predicted Price Distribution"
+
+st.write("Histogram of current market prices with the predicted price of this house in red")
+predicted_price_histogram = px.histogram(test, x='SalePrice')
+# Set the column that "predicted_price" is in to red
+predicted_price_histogram.add_vline(x=predicted_price, line_width=3, line_dash="dash", line_color="red")
+st.plotly_chart(predicted_price_histogram, use_container_width=True)
+
+
+
+'## Model Coefficient Correlations'
+# Df of coefficients, correlation
+df_train_corr = train.corr()
+st.plotly_chart(px.imshow(df_train_corr), use_container_width=True)
 
 """
 ## Debugging
@@ -607,6 +642,7 @@ st.session_state
 
 # Determine the coefficients for each attribute
 "### model_coef_"
+# model.coef_
 raw_coef_list = list(model.coef_)[0]
 coeffs_list = []
 prev_pos = 0
@@ -621,9 +657,9 @@ for ind, attrib in enumerate(st.session_state.attribs):
         coeffs_list.append([attrib, raw_coef_list[prev_pos + option_keys.index(selected_state)]])
         prev_pos += len(ALL_ATTRIBS[attrib]["options"])
 
-coeffs = pd.DataFrame(coeffs_list, columns=["Attribute", "Coefficient"])
-coeffs.sort_values(by="Coefficient", ascending=False, inplace=True)
-coeffs.reset_index(drop=True, inplace=True)
-st.dataframe(coeffs)
+    coeffs = pd.DataFrame(coeffs_list, columns=["Attribute", "Coefficient"])
+    coeffs.sort_values(by="Coefficient", ascending=False, inplace=True)
+    coeffs.reset_index(drop=True, inplace=True)
+    st.dataframe(coeffs)
 
 st.divider()
