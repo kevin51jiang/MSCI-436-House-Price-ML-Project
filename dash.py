@@ -81,8 +81,6 @@ def make_dummy_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.Da
         random_state=12123213)
 
     reg = LinearRegression().fit(train.loc[:, train.columns != 'SalePrice'], train[['SalePrice']])
-    # reg = LinearRegression().fit(train.loc[:, train.columns != 'SalePrice'], train[['SalePrice']])
-    # reg.coef_
 
     return reg, train, test, data_cols
 
@@ -94,9 +92,6 @@ if 'attribs' not in st.session_state or \
     st.session_state.attribs = ['LotArea']
 
 st.title("House Price Predictor")
-
-# model, train, test = None, None, None
-
 model, train, test, data_cols = make_dummy_model(st.session_state.attribs)
 
 
@@ -596,17 +591,20 @@ predicted_price = predict_with_model(model)
 rmse = mean_squared_error(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']), squared=False)
 # readable_price = "{0:.3g}".format(predicted_price)
 st.write(
-    f"\${(round(predicted_price) // 1000 * 1000):,d} ± {(round(rmse) // 1000 * 1000):,d}")  # Round to the nearest thousand, format with commas
+    f"### \${(round(predicted_price) // 1000 * 1000):,d} ± {(round(rmse) // 1000 * 1000):,d}")  # Round to the nearest thousand, format with commas
+# f"RMSE: {format_number(rmse)}"
 
-f"RMSE: {format_number(rmse)}"
+
+
 # R squared
-"R squared:"
-st.write(sklearn.metrics.r2_score(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice'])))
+r2= sklearn.metrics.r2_score(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']))
+st.write(f"R²: {r2:.3g}")
+
 
 # Scatter plot of this house vs the training dataset
 
 
-"Influence of each attribute on price"
+"## Influence of each attribute on price"
 st.selectbox("Select an attribute to plot against SalePrice", st.session_state.attribs, key="scatterplot_attrib")
 scatterplot_attrib = st.session_state.scatterplot_attrib
 
@@ -625,8 +623,6 @@ predicted_price_histogram = px.histogram(test, x='SalePrice')
 # Set the column that "predicted_price" is in to red
 predicted_price_histogram.add_vline(x=predicted_price, line_width=3, line_dash="dash", line_color="red")
 st.plotly_chart(predicted_price_histogram, use_container_width=True)
-
-
 
 '## Model Coefficient Correlations'
 # Df of coefficients, correlation

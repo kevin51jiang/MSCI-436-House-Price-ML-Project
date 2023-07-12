@@ -20,3 +20,7 @@ If you want, make a venv and enter into it. Then:
    ```shell
     streamlit run dash.py
     ```
+3. Freeze dependencies
+    ```shell
+    pip freeze > requirements.txt
+    ```
