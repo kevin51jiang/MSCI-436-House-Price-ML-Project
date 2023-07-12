@@ -1,7 +1,5 @@
 import sklearn.metrics
 import streamlit as st
-from st_aggrid import AgGrid
-from st_aggrid.grid_options_builder import GridOptionsBuilder
 import numpy as np
 from attribOptions import ALL_ATTRIBS
 import plotly.graph_objects as go
