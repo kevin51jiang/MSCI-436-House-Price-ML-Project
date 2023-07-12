@@ -139,9 +139,6 @@ if 'attribs' not in st.session_state or \
 st.title("House Price Predictor")
 model, train, test, data_cols, scaler, standard_transformer_columns = train_model(st.session_state.attribs)
 
-# "Test"
-# test.sort_index(inplace=True)
-# test
 # Transform the test data back to the original scale, for graphing purposes
 inverse_transformed_test = test.copy()
 inverse_transformed_test[standard_transformer_columns] = scaler.inverse_transform(
@@ -179,6 +176,15 @@ def predict_with_model(model: LinearRegression) -> float:
 
 
 ########################################################################################################################
+
+"""
+## Instructions:
+
+1. Choose which attributes you want to use to predict the house price. We recommend to use the recommended set or choosing 7-9 attributes.
+2. Modify the attribute values to match your house's features
+3. View the predicted price of your house
+4. View how your house's price compares to the other houses on the market.
+"""
 
 with st.container():
     "### Use a template, or go custom."
@@ -232,7 +238,9 @@ st.write(f"R²: {r2:.3g} (1 is good, 0 is bad)")
 ########################################################################################################################
 
 # Scatter plot of this house vs the training dataset
-"## Influence of an attribute on price"
+"## Where does your house fit in?"
+'Find how your house compares with the market, broken down by house features.'
+
 st.selectbox("Select an attribute to plot against SalePrice", st.session_state.attribs, key="scatterplot_attrib")
 scatterplot_attrib = st.session_state.scatterplot_attrib
 
@@ -277,7 +285,8 @@ elif ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'select':
 
 # Plot a histogram of the predicted prices
 "## Predicted Price Distribution"
-st.write("Histogram of current market prices with the predicted price of this house in red")
+st.write(
+    "Compare your house's value with the current listed houses on the market. Your house is marked with a red line.")
 predicted_price_histogram = px.histogram(test, x='SalePrice')
 # Set the column that "predicted_price" is in to red
 predicted_price_histogram.add_vline(x=predicted_price, line_width=3, line_dash="dash", line_color="red")
@@ -286,25 +295,29 @@ st.plotly_chart(predicted_price_histogram, use_container_width=True)
 ########################################################################################################################
 
 '## Model Coefficient Correlations'
+'This shows how common a feature of a house is with another feature of a house.'
 # Df of coefficients, correlation
 df_train_corr = train.corr()
 st.plotly_chart(px.imshow(df_train_corr), use_container_width=True)
 
 ########################################################################################################################
 
-# '## Most important features'
+'## Most important features'
+'These are the features that most influence the price of a house'
 # # Get the 3 most positive coefficients, and the 3 most negative coefficients
-#
-# # Get the coefficients
-# coefficients = pd.DataFrame(model.coef_, index=train.columns, columns=['Coefficient'])
-#
-# # Get the 3 most positive coefficients
-# most_positive = coefficients.sort_values(by='Coefficient', ascending=False).head(3)
-# # Get the 3 most negative coefficients
-# most_negative = coefficients.sort_values(by='Coefficient', ascending=True).head(3)
-# # Combine them
-# most_important = pd.concat([most_negative, most_positive])
-# # Graph them
-# st.plotly_chart(px.bar(most_important, x='Coefficient', y=most_important.index), use_container_width=True)
 
-# st.plotly_chart(px.bar(most_important, x=most_important.index, y='Coefficient'), use_container_width=True)
+coefficients = pd.DataFrame(np.transpose(model.coef_), index=[x for x in train.columns if x != 'SalePrice'],
+                            columns=['Coefficient'])
+
+# Get the 3 most positive coefficients
+most_positive = coefficients.sort_values(by='Coefficient', ascending=False).head(3)
+# Get the 3 most negative coefficients
+most_negative = coefficients.sort_values(by='Coefficient', ascending=False).tail(3)
+# Combine them
+most_important = pd.concat([most_positive, most_negative])
+# Graph them
+
+bar_graph = px.bar(most_important, x=most_important.index, y='Coefficient')
+bar_graph.update_xaxes(title_text="Attribute")
+bar_graph.update_yaxes(title_text="Price influence ($)")
+st.plotly_chart(bar_graph, use_container_width=True)
