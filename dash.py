@@ -114,6 +114,7 @@ def predict_with_model(model: LinearRegression) -> float:
     return model.predict([predict_vals])[0][0]
 
 
+# JSON-like dictionary showing all allowed attributes, and their descriptions
 ALL_ATTRIBS = {
     'MSSubClass': {"_type": 'numeric', 'description': 'Identifies the type of dwelling involved in the sale.',
                    "step": 1},
@@ -545,6 +546,7 @@ ALL_ATTRIBS = {
 
 # st.session_state.attribs = []
 
+########################################################################################################################
 
 with st.container():
     "### Use a template, or go custom."
@@ -581,6 +583,7 @@ for attrib in st.session_state.attribs:
 # "Allowed Attributes:"
 # ALL_ATTRIBS
 
+########################################################################################################################
 
 "## Predicted Price"
 # input = np.array([st.session_state[f"data--attrib-{attrib}"] for attrib in st.session_state.attribs])
@@ -595,39 +598,69 @@ st.write(
 # f"RMSE: {format_number(rmse)}"
 
 
-
 # R squared
-r2= sklearn.metrics.r2_score(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']))
-st.write(f"R²: {r2:.3g}")
+r2 = sklearn.metrics.r2_score(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']))
+st.write(f"R²: {r2:.3g} (1 is good, 0 is bad)")
 
+########################################################################################################################
 
 # Scatter plot of this house vs the training dataset
-
-
-"## Influence of each attribute on price"
+"## Influence of an attribute on price"
 st.selectbox("Select an attribute to plot against SalePrice", st.session_state.attribs, key="scatterplot_attrib")
 scatterplot_attrib = st.session_state.scatterplot_attrib
 
 if ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'numeric':
-    st.plotly_chart(px.scatter(test, x=scatterplot_attrib, y='SalePrice', trendline='ols'), use_container_width=True)
+    scatter = px.scatter(test, x=scatterplot_attrib, y='SalePrice', trendline='ols')
+    # Add where the house is
+    scatter.add_scatter(x=[st.session_state[f"data--attrib-{scatterplot_attrib}"]],
+                        y=[predicted_price],
+                        mode='markers',
+                        marker=dict(color='red', size=20, symbol='x'),
+                        name='Your house')
+    st.plotly_chart(scatter, use_container_width=True)
 elif ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'select':
+    # e.g. if scatterplot_attrib is "LandContour", then colnames will be
+    # [
+    #     "LandContour_is_Bnk",
+    #     "LandContour_is_HLS",
+    #     "LandContour_is_Low",
+    #     "LandContour_is_Lvl"
+    # ]
     colnames = [x for x in test.columns if scatterplot_attrib in x]
-    # Plot test with colnames
-    st.plotly_chart(px.box(train, x=colnames, y='SalePrice'), use_container_width=True)
+
+    boxplot = go.Figure()
+
+    for colname in colnames:
+        boxplot.add_trace(go.Box(y=test.loc[test[colname] == 1, 'SalePrice'], name=colname))
+        boxplot.update_xaxes(title_text=scatterplot_attrib)
+        boxplot.update_yaxes(title_text="SalePrice ($)")
+
+    scatterplot_attrib_value = st.session_state[f'data--attrib-{scatterplot_attrib}']
+    boxplot.add_scatter(x=[f"{scatterplot_attrib}_is_{scatterplot_attrib_value}"], y=[predicted_price],
+                        mode='markers',
+                        marker=dict(color='red', size=20, symbol='x'),
+                        name='Your house')
+
+    st.plotly_chart(boxplot, use_container_width=True)
+
+########################################################################################################################
 
 # Plot a histogram of the predicted prices
 "## Predicted Price Distribution"
-
 st.write("Histogram of current market prices with the predicted price of this house in red")
 predicted_price_histogram = px.histogram(test, x='SalePrice')
 # Set the column that "predicted_price" is in to red
 predicted_price_histogram.add_vline(x=predicted_price, line_width=3, line_dash="dash", line_color="red")
 st.plotly_chart(predicted_price_histogram, use_container_width=True)
 
+########################################################################################################################
+
 '## Model Coefficient Correlations'
 # Df of coefficients, correlation
 df_train_corr = train.corr()
 st.plotly_chart(px.imshow(df_train_corr), use_container_width=True)
+
+########################################################################################################################
 
 """
 ## Debugging
