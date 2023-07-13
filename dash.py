@@ -90,11 +90,14 @@ def train_model(input_cols: list = ['LotArea']) -> (LinearRegression, pd.DataFra
     cols = ['Id', *cols, 'SalePrice']
     data = data[cols]
 
+    # get dataframe of numeric columns (integer or float)
     numeric_df = data.select_dtypes(include=['int64', 'float64'])
+    # get columns which are categorical
     non_numeric_columns = data.columns[(data.dtypes != 'int64') & (data.dtypes != 'float64')].tolist()
 
+    # get columns which have NULL values
     null_cols = numeric_df.columns[numeric_df.isna().any()].tolist()
-    # impute NULL values with mean (LotFrontage, MasVnrArea, GarageYrBlt)
+    # impute NULL values with mean of that column
     for col in null_cols:
         mean = numeric_df[col].mean()
         numeric_df[col].fillna(value=mean, inplace=True)
