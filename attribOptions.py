@@ -121,10 +121,10 @@ ALL_ATTRIBS = {
     'BldgType': {"_type": 'select', "description": "Type of dwelling",
                  "options": {
                      '1Fam': 'Single-family Detached',
-                     # '2FmCon': 'Two-family Conversion; originally built as one-family dwelling',
-                     # 'Duplx': 'Duplex',
+                     '2fmCon': 'Two-family Conversion; originally built as one-family dwelling',
+                     'Duplex': 'Duplex',
                      'TwnhsE': 'Townhouse End Unit',
-                     # 'TwnhsI': 'Townhouse Inside Unit'
+                     'Twnhs': 'Townhouse Inside Unit'
                  }},
     'HouseStyle': {"_type": 'select', "description": "Style of dwelling",
                    "options": {

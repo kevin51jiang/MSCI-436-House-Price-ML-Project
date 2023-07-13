@@ -152,10 +152,14 @@ def predict_with_model(model: LinearRegression) -> float:
     predict_df = pd.DataFrame(columns=[x for x in data_cols if x != 'SalePrice'])
 
     for attrib in st.session_state.attribs:
-        if get_attrib_type(attrib) == 'numeric':
-            # predict_vals.append(get_attrib_value(attrib))
+        attrib_type = get_attrib_type(attrib)
+
+        if attrib_type == 'numeric':
             predict_df[attrib] = [get_attrib_value(attrib)]
-        elif get_attrib_type(attrib) == 'select':
+        elif attrib_type == 'select':
+            if 'BldgType' in attrib:
+                print("=== Building type options")
+                print(get_attrib_options(attrib))
             # Re-one hot encode all the options
             for k, v in get_attrib_options(attrib).items():
                 if get_attrib_value(attrib) == k:
@@ -200,6 +204,7 @@ with st.container():
 
 
 def on_multiselect_change():
+    # Make sure that at least one attribute is selected
     if st.session_state.attribs is None or len(st.session_state) == 0:
         st.session_state.attribs = ['LotArea']
         st.experimental_rerun()
@@ -221,20 +226,19 @@ for attrib in st.session_state.attribs:
 ########################################################################################################################
 
 "## Predicted Price"
-# debug()
 
 predicted_price = predict_with_model(model)
 
 rmse = mean_squared_error(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']), squared=False)
-# readable_price = "{0:.3g}".format(predicted_price)
+
 st.write(
     f"### \${(round(predicted_price) // 1000 * 1000):,d} ± {(round(rmse) // 1000 * 1000):,d}")  # Round to the nearest thousand, format with commas
-# f"RMSE: {format_number(rmse)}"
-
 
 # R squared
 r2 = sklearn.metrics.r2_score(test[['SalePrice']], model.predict(test.loc[:, test.columns != 'SalePrice']))
-st.write(f"R²: {r2:.3g} (1 is good, 0 is bad)")
+st.write(f"R²: {r2:.3g} (positive is good, negative is bad)")
+if r2 < 0.4:  # Ballpark estimate for a bad model
+    st.warning("It looks like this model is not very good. Changing the attributes may help.")
 
 ########################################################################################################################
 
@@ -249,15 +253,18 @@ scatterplot_attrib = st.session_state.scatterplot_attrib
 st.write(f"{scatterplot_attrib} ({ALL_ATTRIBS[scatterplot_attrib]['description']})")
 
 if ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'numeric':
+    # If we have a numeric attribute, we can draw a scatter plot
+    # Draw a scatter plot of the test data, with a line of best fit
     scatter = px.scatter(inverse_transformed_test, x=scatterplot_attrib, y='SalePrice', trendline='ols')
     # Add where the house is
     scatter.add_scatter(x=[get_attrib_value(scatterplot_attrib)],
                         y=[predicted_price],
                         mode='markers',
-                        marker=dict(color='red', size=20, symbol='x'),
+                        marker=dict(color='red', size=15, symbol='x'),
                         name='Your house')
     st.plotly_chart(scatter, use_container_width=True)
 elif ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'select':
+    # If we have a categorical attribute, we can draw multiple boxplots
     # e.g. if scatterplot_attrib is "LandContour", then colnames will be
     # [
     #     "LandContour_is_Bnk",
@@ -274,12 +281,15 @@ elif ALL_ATTRIBS[scatterplot_attrib]["_type"] == 'select':
         boxplot.update_xaxes(title_text=scatterplot_attrib)
         boxplot.update_yaxes(title_text="SalePrice ($)")
 
-    scatterplot_attrib_value = st.session_state[f'data--attrib-{scatterplot_attrib}']
-    boxplot.add_scatter(x=[f"{scatterplot_attrib}_is_{scatterplot_attrib_value}"], y=[predicted_price],
+    # Add a marker to the right column
+    scatterplot_attrib_value = get_attrib_value(scatterplot_attrib)
+    scatterplot_attrib_session_key = f"{scatterplot_attrib}_is_{scatterplot_attrib_value}"
+    boxplot.add_scatter(x=[scatterplot_attrib_session_key], y=[predicted_price],
                         mode='markers',
-                        marker=dict(color='red', size=20, symbol='x'),
+                        marker=dict(color='red', size=15, symbol='x'),
                         name='Your house')
 
+    # Display the plot
     st.plotly_chart(boxplot, use_container_width=True)
 
 ########################################################################################################################
@@ -305,7 +315,7 @@ st.plotly_chart(px.imshow(df_train_corr), use_container_width=True)
 
 '## Most important features'
 'These are the features that most influence the price of a house'
-# # Get the 3 most positive coefficients, and the 3 most negative coefficients
+# Get the 3 most positive coefficients, and the 3 most negative coefficients
 
 coefficients = pd.DataFrame(np.transpose(model.coef_), index=[x for x in train.columns if x != 'SalePrice'],
                             columns=['Coefficient'])
@@ -321,4 +331,8 @@ most_important = pd.concat([most_positive, most_negative])
 bar_graph = px.bar(most_important, x=most_important.index, y='Coefficient')
 bar_graph.update_xaxes(title_text="Attribute")
 bar_graph.update_yaxes(title_text="Price influence ($)")
+
+# Set the first 3 columns to green, the last 3 to red
+bar_graph.update_traces(marker_color=['green'] * 3 + ['red'] * 3)
+
 st.plotly_chart(bar_graph, use_container_width=True)
